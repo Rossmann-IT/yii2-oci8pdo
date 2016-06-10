@@ -142,9 +142,9 @@
             }
 
             if ($fetch_style === PDO::FETCH_ASSOC) {
-                $result = oci_fetch_array($this->_sth, OCI_ASSOC);
+                $result = oci_fetch_array($this->_sth, OCI_ASSOC + OCI_RETURN_NULLS);
             } elseif ($fetch_style === PDO::FETCH_NUM) {
-                $result = oci_fetch_array($this->_sth, OCI_NUM);
+                $result = oci_fetch_array($this->_sth, OCI_NUM + OCI_RETURN_NULLS);
             } elseif ($fetch_style === PDO::FETCH_BOTH) {
                 throw new PDOException('PDO::FETCH_BOTH is not implemented for Oci8PDO_Statement::fetch()');
             } elseif ($fetch_style === PDO::FETCH_BOUND) {
@@ -161,6 +161,7 @@
                 throw new PDOException('This $fetch_style combination is not implemented for Oci8PDO_Statement::fetch()');
             }
 
+            $this->adjustKeyCase($result);
             $this->bindToColumn($result);
             return $result;
         }
@@ -223,8 +224,6 @@
                     return oci_bind_by_name($this->_sth, $parameter, $variable, $length);
                 }
             }
-
-
         }
 
         /**
@@ -314,7 +313,7 @@
          */
         public function fetchColumn($colNumber = 0)
         {
-            $result = oci_fetch_array($this->_sth, OCI_NUM);
+            $result = oci_fetch_array($this->_sth, OCI_NUM + OCI_RETURN_NULLS);
 
             if ($result === false) {
                 return false;
@@ -371,7 +370,11 @@
             } else {
                 throw new PDOException('This $fetch_style combination is not implemented for Oci8PDO_Statement::fetch()');
             }
-
+            if (is_array($result)) {
+                foreach ($result as &$row) {
+                    $this->adjustKeyCase($row);
+                }
+            }
             return $result;
         }
 
@@ -618,4 +621,24 @@
         {
             throw new PDOException('valid() method is not implemented for Oci8PDO_Statement');
         }
+
+        /**
+         * if the attribute PDO::ATTR_CASE is set to either PDO::CASE_LOWER or PDO::CASE_UPPER, the case of the
+         * column names in the row is adjusted
+         * rows can be large, so a reference is used to save memory
+         *
+         * @param array $row
+         */
+        protected function adjustKeyCase(&$row) {
+            if (!is_array($row)) {
+                return;
+            }
+            $case = $this->_pdoOci8->getAttribute(\PDO::ATTR_CASE);
+            if ($case == \PDO::CASE_LOWER) {
+                $row = array_change_key_case($row, CASE_LOWER);
+            } elseif ($case == \PDO::CASE_UPPER) {
+                $row = array_change_key_case($row, CASE_UPPER);
+            }
+        }
+
     }
