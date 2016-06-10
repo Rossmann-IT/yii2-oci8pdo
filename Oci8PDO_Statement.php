@@ -350,6 +350,10 @@
                 oci_fetch_all($this->_sth, $preResult, 0, -1, OCI_FETCHSTATEMENT_BY_COLUMN + OCI_NUM);
                 $result = array();
                 foreach ($preResult as $row) {
+                    // when the result set is empty, oci_fetch_all will return an array with an empty array as first and only element
+                    if (!isset($row[0])) {
+                        continue;
+                    }
                     $result[] = $row[0];
                 }
             } elseif ($fetch_style === PDO::FETCH_BOTH) {
