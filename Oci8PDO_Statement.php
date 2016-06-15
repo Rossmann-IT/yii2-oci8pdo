@@ -352,14 +352,12 @@
             } elseif ($fetch_style === PDO::FETCH_NUM) {
                 oci_fetch_all($this->_sth, $result, 0, -1, OCI_FETCHSTATEMENT_BY_ROW + OCI_NUM);
             } elseif ($fetch_style === PDO::FETCH_COLUMN) {
-                oci_fetch_all($this->_sth, $preResult, 0, -1, OCI_FETCHSTATEMENT_BY_COLUMN + OCI_NUM);
-                $result = array();
-                foreach ($preResult as $row) {
-                    // when the result set is empty, oci_fetch_all will return an array with an empty array as first and only element
-                    if (!isset($row[0])) {
-                        continue;
-                    }
-                    $result[] = $row[0];
+                oci_fetch_all($this->_sth, $result, 0, -1, OCI_FETCHSTATEMENT_BY_COLUMN + OCI_NUM);
+                if (!isset($result[0][0])) {
+                    $result = array();
+                } else {
+                    // Returns the indicated 0-indexed column.
+                    $result = $result[0];
                 }
             } elseif ($fetch_style === PDO::FETCH_BOTH) {
                 throw new PDOException('PDO::FETCH_BOTH is not implemented for Oci8PDO_Statement::fetchAll()');
