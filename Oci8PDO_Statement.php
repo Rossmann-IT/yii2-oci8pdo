@@ -222,8 +222,12 @@
                 } else if ($data_type == \PDO::PARAM_LOB) {
                     $clob = oci_new_descriptor($this->_pdoOci8->getDbh(), OCI_D_LOB);
                     $res = oci_bind_by_name($this->_sth, $parameter, $clob, -1, OCI_B_BLOB);
-                    $clob->writeTemporary(stream_get_contents($variable), OCI_TEMP_BLOB);
-                    fclose($variable);
+                    if (is_resource($variable)) {
+                        $clob->writeTemporary(stream_get_contents($variable), OCI_TEMP_BLOB);
+                        fclose($variable);
+                    } else {
+                        $clob->writeTemporary($variable, OCI_TEMP_BLOB);
+                    }
                     return $res;
                 } else {
                     return oci_bind_by_name($this->_sth, $parameter, $variable, $length);
