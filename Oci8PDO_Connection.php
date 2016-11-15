@@ -22,6 +22,11 @@
         public $pdoClass = 'sfedosimov\oci8pdo\Oci8PDO';
 
         /**
+         * @var bool if createPdoInstance() should force a new database connection
+         */
+        public $forceReconnect = false;
+
+        /**
          * Creates the PDO instance.
          * When some functionalities are missing in the pdo driver, we may use
          * an adapter class to provides them.
@@ -36,7 +41,11 @@
 
             try {
                 Yii::trace('Opening Oracle connection', 'vendor\sfedosimov\yii2-oci8pdo\Oci8PDO_Connection');
-                $pdoClass = parent::createPdoInstance();
+                if ($this->forceReconnect) {
+                    $pdoClass = new Oci8PDO($this->dsn, $this->username, $this->password, $this->attributes, $this->forceReconnect);
+                } else {
+                    $pdoClass = parent::createPdoInstance();
+                }
             } catch(PDOException $e) {
                 throw $e;
             }
