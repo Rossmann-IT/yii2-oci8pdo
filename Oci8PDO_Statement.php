@@ -57,6 +57,12 @@
          */
         protected $_boundColumns = array();
 
+        /*
+         * Bound values for bindValue()
+         * when oci_bind_value() is called, the bound variable must stay in scope until oci_execute() is called
+         */
+        protected $_boundValues = array();
+
         /**
          * Constructor
          *
@@ -92,11 +98,7 @@
         {
             $mode = OCI_COMMIT_ON_SUCCESS;
             if ($this->_pdoOci8->isTransaction()) {
-                if (PHP_VERSION_ID > 503020) {
-                    $mode = OCI_NO_AUTO_COMMIT;
-                } else {
-                    $mode = OCI_DEFAULT;
-                }
+                $mode = OCI_NO_AUTO_COMMIT;
             }
 
             // Set up bound parameters, if passed in
@@ -110,6 +112,8 @@
             }
 
             if (@oci_execute($this->_sth, $mode)) {
+                // release references for bound values created by bindValue()
+                $this->_boundValues = [];
                 return true;
             } else {
                 $e = oci_error($this->_sth);
@@ -168,9 +172,13 @@
 
         /**
          * Binds a parameter to the specified variable name
+         * The calling function must make sure that $variable stays in scope until execute() is called,
+         * because oci_bind_by_name/oci_execute require that
+         * (works mysteriously in PHP 5.6 even if the variable goes out of scope, but fails in PHP 7.1)
+         * @see http://php.net/manual/en/function.oci-bind-by-name.php
          *
          * @param string $parameter
-         * @param mixed  $variable
+         * @param mixed  $variable     must be kept in scope by caller until execute() is called!
          * @param int    $data_type
          * @param int    $length
          * @param null   $driver_options
@@ -271,6 +279,9 @@
             );
         }
 
+        /**
+         * @param array $result
+         */
         protected function bindToColumn($result)
         {
             if ($result !== false) {
@@ -288,6 +299,9 @@
 
         /**
          * Binds a value to a parameter
+         * oci8 does not offer an equivalent to PDO's bindValue(), which would allow to bind a value without passing
+         * it as a reference. oci_bind_by_name() needs a reference, and the referenced variable MUST stay in scope
+         * until oci_execute() is called. To ensure that, we need to keep the value in $this->_boundValues.
          *
          * @param string $parameter
          * @param mixed  $variable
@@ -300,6 +314,8 @@
             $variable,
             $dataType = PDO::PARAM_STR
         ) {
+            // create a reference for $variable to keep it in scope until oci_execute() is called
+            $this->_boundValues[] =& $variable;
             return $this->bindParam($parameter, $variable, $dataType);
         }
 
