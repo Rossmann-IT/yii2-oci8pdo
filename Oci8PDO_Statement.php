@@ -58,8 +58,11 @@
         protected $_boundColumns = array();
 
         /*
-         * Bound values for bindValue()
-         * when oci_bind_value() is called, the bound variable must stay in scope until oci_execute() is called
+         * References to bound variables in bindValue()
+         * When oci_bind_value() is called, a reference to the bound variable must stay in scope until oci_execute() is called
+         * The same applies if a lob file descriptor created with oci_new_descriptor() is bound
+         * The elements of this array are never used again, they are just held here to keep the references in scope
+         * (necessary for PHP 7.1)
          */
         protected $_boundValues = array();
 
@@ -219,16 +222,19 @@
 
                 if ($data_type == Oci8PDO::PARAM_BLOB) {
                     $clob = oci_new_descriptor($this->_pdoOci8->getDbh(), OCI_D_LOB);
+                    $this->_boundValues[] = $clob;
                     $res = oci_bind_by_name($this->_sth, $parameter, $clob, -1, OCI_B_BLOB);
                     $clob->writeTemporary($variable, OCI_TEMP_BLOB);
                     return $res;
                 } else if ($data_type == Oci8PDO::PARAM_CLOB) {
                     $clob = oci_new_descriptor($this->_pdoOci8->getDbh(), OCI_D_LOB);
+                    $this->_boundValues[] = $clob;
                     $res = oci_bind_by_name($this->_sth, $parameter, $clob, -1, OCI_B_CLOB);
                     $clob->writeTemporary($variable, OCI_TEMP_CLOB);
                     return $res;
                 } else if ($data_type == \PDO::PARAM_LOB) {
                     $clob = oci_new_descriptor($this->_pdoOci8->getDbh(), OCI_D_LOB);
+                    $this->_boundValues[] = $clob;
                     $res = oci_bind_by_name($this->_sth, $parameter, $clob, -1, OCI_B_BLOB);
                     if (is_resource($variable)) {
                         $clob->writeTemporary(stream_get_contents($variable), OCI_TEMP_BLOB);
